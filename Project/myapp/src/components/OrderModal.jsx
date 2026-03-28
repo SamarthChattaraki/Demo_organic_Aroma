@@ -19,15 +19,18 @@ function OrderModal({ isOpen, onClose, product, quantity }) {
 
     try {
       // 🔹 1. Create order
-      const res = await fetch("http://localhost:5000/create-order", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const res = await fetch(
+        "https://demo-organic-aroma.onrender.com/create-order",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            amount: product.price * quantity,
+          }),
         },
-        body: JSON.stringify({
-          amount: product.price * quantity,
-        }),
-      });
+      );
 
       const data = await res.json();
       console.log("ORDER DATA:", data);
@@ -41,21 +44,24 @@ function OrderModal({ isOpen, onClose, product, quantity }) {
 
         handler: async function (response) {
           try {
-            await fetch("http://localhost:5000/verify-payment", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
+            await fetch(
+              "https://demo-organic-aroma.onrender.com/verify-payment",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  paymentId: response.razorpay_payment_id,
+                  orderId: response.razorpay_order_id,
+                  customerName,
+                  phone,
+                  email, // ✅ SEND EMAIL
+                  product: product.name,
+                  quantity,
+                }),
               },
-              body: JSON.stringify({
-                paymentId: response.razorpay_payment_id,
-                orderId: response.razorpay_order_id,
-                customerName,
-                phone,
-                email, // ✅ SEND EMAIL
-                product: product.name,
-                quantity,
-              }),
-            });
+            );
 
             window.location.href = "/success";
           } catch (err) {
