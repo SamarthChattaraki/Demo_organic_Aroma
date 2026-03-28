@@ -17,6 +17,7 @@ import Categories from "./Categories";
 import Products from "./Products";
 import Header from "./Header";
 import Hero from "./Hero";
+import Success from "./Success";
 
 // ================= WhatsApp =================
 export function WhatsAppButton() {
@@ -73,6 +74,7 @@ export default function OrganicPage() {
         <Route path="/about-us" element={<AboutUsPage />} />
         <Route path="/testimonial" element={<TestimonialPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
+        <Route path="/success" element={<Success />} />
       </Routes>
     </Router>
   );

@@ -1,47 +1,105 @@
-import express from "express";
-import axios from "axios";
-import cors from "cors";
+const express = require("express");
+const Razorpay = require("razorpay");
+const cors = require("cors");
+const nodemailer = require("nodemailer");
 
 const app = express();
-app.use(cors());
 app.use(express.json());
+app.use(cors());
 
-const TOKEN =
-  "EAATnH8IdLdUBQGZAsDcd0oMgRgaVXW9JmleD2mST0B56FZBg8JNpuGZCgRZBoLY8tya86CAIAY2Oti5eUcWo9g03ZBl1vLQDwIlTZAMi8lgLYir5JJ1wXchr4sRRBLilAC8WpmbckRUyf8fs2B4zfYhUGaMxQwEHPZBgFXgfD5CNS0fFElPfPxlfKxxV9ZCLdDAHMwZDZD";
+// 🔑 Razorpay Keys (LIVE or TEST)
+const razorpay = new Razorpay({
+  key_id: "rzp_live_SVlJcgQqonaJ9c",
+  key_secret: "RdhgZ6FzZQJog0VM3QtXZAzs",
+});
+// 📧 Email Setup
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "samarthchattaraki@gmail.com", // 👈 your email
+    pass: "shjwnrdcianltgdb", // 👈 Gmail App Password
+  },
+});
 
-const PHONE_NUMBER_ID = "903734079484245";
-
-app.post("/send-order", async (req, res) => {
-  let { vendorNumber, message } = req.body;
-
-  // Remove "+" if it exists
-  vendorNumber = vendorNumber.replace("+", "");
-
+// 🔹 Create Order API
+app.post("/create-order", async (req, res) => {
   try {
-    const response = await axios.post(
-      `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`,
-      {
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: vendorNumber,
-        type: "text",
-        text: { body: message },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${TOKEN}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const { amount } = req.body;
 
-    console.log("WhatsApp API response:", response.data);
+    const order = await razorpay.orders.create({
+      amount: amount * 100,
+      currency: "INR",
+    });
 
-    res.json({ success: true, message: "Message sent to vendor!" });
-  } catch (error) {
-    console.error("WHATSAPP ERROR:", error.response?.data || error);
-    res.status(500).json({ success: false, error: error.response?.data });
+    res.json(order);
+  } catch (err) {
+    console.error("Create Order Error:", err);
+    res.status(500).send("Error creating order");
   }
 });
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+// 🔹 Verify + Save Order + Send Email
+app.post("/verify-payment", async (req, res) => {
+  try {
+    const {
+      paymentId,
+      orderId,
+      customerName,
+      phone,
+      email, // ✅ NEW
+      product,
+      quantity,
+    } = req.body;
+
+    console.log("✅ New Order Received:");
+    console.log(req.body);
+
+    // 📧 Email to Customer
+    const customerMail = {
+      from: "samarthchattaraki@gmail.com",
+      to: email,
+      subject: "Order Confirmation - Organic Aroma",
+      text: `
+Hello ${customerName},
+
+✅ Your order has been placed successfully!
+
+Product: ${product}
+Quantity: ${quantity}
+Payment ID: ${paymentId}
+
+Thank you for shopping with us 🌿
+      `,
+    };
+
+    // 📧 Email to Owner
+    const ownerMail = {
+      from: "samarthchattaraki@gmail.com",
+      to: "chattarakisamarth12@gmail.com", // 👈 owner email
+      subject: "🛍️ New Order Received",
+      text: `
+New Order Received!
+
+Customer: ${customerName}
+Phone: ${phone}
+Email: ${email}
+Product: ${product}
+Quantity: ${quantity}
+Payment ID: ${paymentId}
+      `,
+    };
+
+    // 🔹 Send Emails
+    await transporter.sendMail(customerMail);
+    await transporter.sendMail(ownerMail);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Verify Error:", err);
+    res.status(500).send("Error processing order");
+  }
+});
+
+app.listen(5000, () => {
+  console.log("🚀 Server running on port 5000");
+});
